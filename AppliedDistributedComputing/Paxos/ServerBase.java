@@ -5,6 +5,9 @@ import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
 
+// Base class for all server roles
+// This class manages RMI registration, unregistration, asynchronous tasks queuing and processing, finding specific roles members in RMI, random down and up again
+// These operations are common to all server roles
 public abstract class ServerBase extends UnicastRemoteObject implements ServerInterface
 {
   private class Down extends TimerTask
@@ -29,7 +32,7 @@ public abstract class ServerBase extends UnicastRemoteObject implements ServerIn
       {
         RegisterRMI();
       } catch (Exception e){}
-      int ran = (int)(Math.random() * 60.0);
+      int ran = (int)(Math.random() * 60 + 60);
       timer.schedule(new Down(), ran * 1000);
     }
   }
@@ -98,7 +101,7 @@ public abstract class ServerBase extends UnicastRemoteObject implements ServerIn
           }
         });
     RegisterRMI();
-    timer.schedule(new Down(), (long)(Math.random() * 60 * 1000));
+    timer.schedule(new Down(), (long)((Math.random() * 60 + 60) * 1000));
   }
 
   public void AddTask(Task task)

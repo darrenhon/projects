@@ -5,6 +5,10 @@ import java.io.*;
 import java.lang.*;
 import java.util.*;
 
+// This client is mostly the same as project 3 except that it registers itself to RMI registry too
+// Client has to be called by Learners to notify successful writes, so it has to be in RMI registry
+// All write operations are sending to Proposer asynchronously. Read operation is done by calling DBServer synchronously.
+// So the effects of writes will take time to be processed by Paxos. Read is done immediately, and may not see the effects of writes.
 public class Client extends UnicastRemoteObject implements ClientInterface
 {
   private Logger logger = new Logger("Client.log");
@@ -30,6 +34,7 @@ public class Client extends UnicastRemoteObject implements ClientInterface
     }
   }
 
+  // Helper method for finding all DBServer and Proposer
   private ArrayList<Integer> FindRoleMembers(String role)
   {
     ArrayList<Integer> results = new ArrayList<Integer>();
@@ -57,6 +62,7 @@ public class Client extends UnicastRemoteObject implements ClientInterface
     return results;
   }
 
+  // Helper method for finding specific DBServer and Proposer
   private ServerInterface GetRoleMember(String role, int id)
   {
     try
@@ -70,6 +76,7 @@ public class Client extends UnicastRemoteObject implements ClientInterface
     }
   }
 
+  // Get the Proposer leader. Send write operations to it
   private ServerInterface GetFirstWorkingProposer()
   {
     for (int id : proposers)
@@ -260,7 +267,6 @@ public class Client extends UnicastRemoteObject implements ClientInterface
         System.exit(0);
       }
       ParseAndRun(command);
-      try { Thread.sleep(700); } catch (Exception e){}
     }
   }
 
@@ -275,6 +281,7 @@ public class Client extends UnicastRemoteObject implements ClientInterface
     }
   }
 
+  // Get is done by getting the value from all DBServer and see if the majority agrees on a value
   private void Get(String key)
   {
     HashMap<String, Integer> votes = new HashMap<String, Integer>();
@@ -332,6 +339,7 @@ public class Client extends UnicastRemoteObject implements ClientInterface
     }
   }
 
+  // Put is done by sending a request to Propser and wait for Learners to announce the result
   private void Put(String key, String value)
   {
     ServerInterface proposer = GetFirstWorkingProposer();
@@ -384,6 +392,8 @@ public class Client extends UnicastRemoteObject implements ClientInterface
         // all other cases are malformed data
         logger.LogWithScreen("Command error:" + command);
       }
+      // give some time for Paxos to run
+      Thread.sleep(300);
     }
     catch (Exception e)
     {

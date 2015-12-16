@@ -5,10 +5,7 @@ import java.util.*;
 import java.rmi.*;
 import java.rmi.registry.*;
 
-// Server is a remote object to be invoked by clients and other servers
-// The interface for server-server communication is ServerServerInterface
-// The interface for server-client communication is ServerClientInterface
-// Each RMIServer instance has a Server object registered in the rmiregistry
+// This is one of the role of the servers, responsible for managing the key-value store
 public class DBServer extends ServerBase implements DBServerInterface
 {
   private HashMap<String, String> map = new HashMap<String, String>();
@@ -17,7 +14,7 @@ public class DBServer extends ServerBase implements DBServerInterface
   public DBServer(String rmi, Logger logger) throws Exception
   {
     super(rmi, logger);
-    // retrieve DB
+    // retrieve DB from file
     try
     {
       ObjectInputStream ois = new ObjectInputStream(new FileInputStream("ServerData.obj"));   
@@ -52,8 +49,7 @@ public class DBServer extends ServerBase implements DBServerInterface
     }
   }
 
-  // ServerClientInterface implementation
-
+  // get is called by client directly
   public String Get(String key) throws RemoteException
   {
     synchronized(map)
@@ -71,9 +67,7 @@ public class DBServer extends ServerBase implements DBServerInterface
     }
   }
 
-  // private functions
-
-  // called when a delete command is committing
+  // delete is called by Learner
   private String Delete(String key)
   {
     synchronized(map)
@@ -84,7 +78,7 @@ public class DBServer extends ServerBase implements DBServerInterface
     }
   }
 
-  // called when a put command is committing
+  // put is called by Learner
   private String Put(String key, String value)
   {
     synchronized(map)

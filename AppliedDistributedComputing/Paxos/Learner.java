@@ -1,6 +1,8 @@
 import java.util.*;
+
 public class Learner extends ServerBase
 {
+  // remember the proposals that were learned
   private ArrayList<Integer> learnedProposals = new ArrayList<Integer>();
   public Learner(String rmi, Logger logger) throws Exception
   {
