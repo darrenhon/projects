@@ -1,0 +1,15 @@
+You need to have Java 1.6 or above to run the programs.
+Make sure you use a port that is not blocked by firewall.
+Build the source code first by running "make".
+
+To run TCP server, run the following command:
+java TCPServer port-number
+
+To run TCP client, start TCP server first, then run the following command:
+java TCPClient server-address server-port
+
+To run UDP server:
+java UDPServer port-number
+
+To run UDP client, start UDP server first, then run the following command:
+java UDPClient server-address server-port
