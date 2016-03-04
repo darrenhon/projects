@@ -34,12 +34,12 @@ def getFilteredUserLikes(path, minlikes, maxlikes):
 
 def bucketAge(age):
   if float(age) < 25:
-    return 'xx-24'
+    return '4'
   elif float(age) < 35:
-    return '25-34'
+    return '3'
   elif float(age) < 50:
-    return '35-49'
-  return '50-xx'
+    return '2'
+  return '1'
 
 def getProfiles():
   result = []
@@ -68,38 +68,18 @@ def initialize(inputpath, trainpath):
   global pro
   pro = getProfiles()
 
-def convertDummy(dum):
-  return dum
-
-def convertGender(gender):
-  return float(gender)
-
-def knnOpe(k, sample, weighted = True):
-  knnAll(k, sample, 4, False, weighted, '1.0')
-
-def knnAge(k, sample, weighted = True):
-  knnAll(k, sample, 2, True, weighted, '1.0')
-
-def knnGender(k, sample, weighted = True):
-  knnAll(k, sample, 3, True, weighted, '1.0', convertGender)
-
-def knnSingle(userid, k, col, classify, weighted, default = None):
-  js = [0] * len(pro)
+def knnSingle(userid, k, col, classify, weighted, default):
+  js = []
   ilikes = testUsers[userid]
-  for j in range(0,len(pro)):
-    useridj = pro[j][1]
-    jlikes = trainUsers[useridj]
-    if len(ilikes) == 0 or len(jlikes) == 0: continue
-    sim = float(len(ilikes&jlikes))/len(ilikes|jlikes)
+  for j in range(len(pro)):
+    jlikes = trainUsers[pro[j][1]]
+    sim = len(ilikes&jlikes)
     if sim == 0: continue
-    js[j] = (j, sim)
-  js = [item for item in js if item != 0]
-  predict = 1
-  if (len(js) > 0):
-    return predictknn(col, js, k, weighted, default)
+    js.append((j, float(sim)/len(ilikes|jlikes)))
+  return predictknn(col, js, k, classify, weighted, default) if len(js) > 0 else default
 
 # knn
-def knnAll(k, sample, col, classify, weighted, default, conPredict = convertDummy, conActual = convertDummy):
+def knnAll(k, sample, col, classify, weighted, default):
   testrange = random.sample(range(0, len(pro)), sample)
   correct = 0
   se = 0
@@ -109,23 +89,17 @@ def knnAll(k, sample, col, classify, weighted, default, conPredict = convertDumm
     if count % (len(testrange) / 10.0) == 0:
       print(count * 100.0 / len(testrange))
     #jacard similarities [user index, simularity]
-    js = [0] * len(pro)
-    trainrange = set(range(0,len(pro)))
-    trainrange.remove(i)
+    js = []
     ilikes = testUsers[pro[i][1]]
-    for j in trainrange:
-      useridj = pro[j][1]
-      jlikes = trainUsers[useridj]
-      if len(ilikes) == 0 or len(jlikes) == 0: continue
-      sim = float(len(ilikes&jlikes))/len(ilikes|jlikes)
+    for j in range(len(pro)):
+      if i == j: continue
+      jlikes = trainUsers[pro[j][1]]
+      sim = len(ilikes&jlikes)
       if sim == 0: continue
-      js[j] = (j, sim)
-    js = [item for item in js if item != 0]
-    predict = default
-    if (len(js) > 0):
-      predict = predictknn(col, js, k, classify, weighted, default)
+      js.append((j, float(sim)/len(ilikes|jlikes)))
+    predict = predictknn(col, js, k, classify, weighted, default) if len(js) > 0 else default
     if classify:
-      if conPredict(predict) == conActual(pro[i][col]): correct = correct + 1
+      if predict == pro[i][col]: correct = correct + 1
     else:
       se = se + pow(predict - float(pro[i][col]), 2)
   if classify:
@@ -134,11 +108,11 @@ def knnAll(k, sample, col, classify, weighted, default, conPredict = convertDumm
     print('rmse', sqrt(float(se)/len(testrange)))
 
 def predictknn(col, js, k, classify, weighted, default):
-    sortjs = sorted([item for item in js], key = lambda item:item[1], reverse=True)
+    sortjs = sorted(js, key = lambda item:item[1], reverse=True)
     if len(sortjs) > k:
       sortjs = [item for item in sortjs if item[1] >= sortjs[k - 1][1]]
     if not weighted:
-      for item in sortjs: item[1] = 1
+      for i in range(len(sortjs)): sortjs[i] = (sortjs[i][0], 1)
     if classify:
       labelsim = dict()
       for item in sortjs:
@@ -150,7 +124,7 @@ def predictknn(col, js, k, classify, weighted, default):
       maxsim = [item[0] for item in list(labelsim.items()) if item[1] == max(labelsim.values())]
       if len(maxsim) > 1: 
         print('Draw')
-        return maxsim[0] if default is None else default
+        return max(maxsim)
       return maxsim[0]
     else:
       return (sum([float(pro[item[0]][col]) * item[1] for item in sortjs]) / sum([item[1] for item in sortjs]))
