@@ -1,0 +1,95 @@
+#!/usr/bin/Rscript
+
+args <- commandArgs(trailingOnly = TRUE)
+output = ""
+input = ""
+
+# read command line input
+for (i in 1:4)
+{
+  arg = args[i]
+  if (!is.na(arg) && "-o" == arg) output = args[i + 1]
+  if (!is.na(arg) && "-i" == arg) input = args[i + 1]
+}
+
+# show usage for bad command line input
+if (output == '' || input == '')
+{
+  cat('Usage: tcss555 -i path/to/test/my-test-data -o path/to/output/directory\n\n')
+  q()
+}
+
+# include source files
+#source('textPredict.r')
+source('likePredict.r')
+
+if (substr(output, nchar(output), nchar(output)) != '/')
+{
+  output = paste(output, '/', sep='')
+}
+if (substr(input, nchar(input), nchar(input)) != '/')
+{
+  input = paste(input, '/', sep='')
+}
+
+print('Loading data...')
+# read input data
+data = read.csv(paste(input, 'profile/profile.csv', sep=''))
+relations = read.csv(paste(input, 'relation/relation.csv', sep=''))
+
+print('Loading models...')
+# load models
+#textGenderModel = readRDS('gender_mixed_model.rds')
+#likeGenderModel = readRDS('like-gender-tree-100ig-6.5ktrain.rds')
+#likeAgeModel = readRDS('like-age-tree-100ig-7.5ktrain.rds')
+#likeConModel = readRDS('like-con-tree-100col-7.5ktrain.rds')
+#likeExtModel = readRDS('like-ext-tree-50col-6.5ktrain.rds')
+#likeOpeModel = readRDS('like-ope-tree-50col-7.5ktrain.rds')
+initializeKnn(input)
+
+count = 0
+print('Running...')
+writeXml <- function(path, row)
+{
+  count <<- count + 1
+  print(paste('User#', count, sep=''))
+  userid = toString(row[,'userid'])
+  textPath = paste(input, '/text/', userid, '.txt', sep='')
+  # text model
+  #numGender = as.numeric(as.character(classifyPost(textPath, textGenderModel)))
+  # like models
+  numGender = predictGenderByLikes(userid, 0,0)
+  #age = predictAgeByLikes(userid, relations, likeAgeModel)
+  #con = predictPersonalityByLikes(userid, relations, likeConModel, 1:100)
+  #ext = predictPersonalityByLikes(userid, relations, likeExtModel, 1:50)
+  #ope = predictPersonalityByLikes(userid, relations, likeOpeModel, 1:50)
+
+  # baseline model
+  gender = 'female'
+  if (numGender == 0) gender = 'male' 
+  age = 'xx-24'
+  con = 3.44
+  ext = 3.48
+  ope = 3.90
+  neu = 2.73
+  agr = 3.58
+
+  text = paste(
+    sprintf('<userId="%s"', userid),
+    sprintf('age_group="%s"', age),
+    sprintf('gender="%s"', gender),
+    sprintf('extrovert="%.2f"', ext),
+    sprintf('neurotic="%.2f"', neu),
+    sprintf('agreeable="%.2f"', agr),
+    sprintf('conscientious="%.2f"', con),
+    sprintf('open="%.2f"', ope),
+    '/>',
+    sep = '\n')
+  write(text, paste(path, userid, '.xml', sep=''))
+}
+
+# write xml for each row
+#trash<-capture.output(
+by(data, 1:nrow(data), function(row) writeXml(output, row))
+#)
+
