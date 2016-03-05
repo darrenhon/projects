@@ -109,11 +109,6 @@ def knnAll(k, sample, col, classify, weighted, default):
 
 def predictknn(col, js, k, classify, weighted, default):
     sortjs = sorted(js, key = lambda item:item[1], reverse=True)
-    if not classify:
-      targets = [[item[0], float(pro[item[0]][col])] for item in sortjs]
-      targets = [item[0] for item in targets if item[1] >= default * 0.7 and item[1] <= default * 1.3]
-      sortjs = [item for item in sortjs if item[0] in targets]
-      if len(sortjs) == 0: return default
     if len(sortjs) > k:
       sortjs = [item for item in sortjs if item[1] >= sortjs[k - 1][1]]
     if not weighted:
