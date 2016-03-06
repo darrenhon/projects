@@ -70,6 +70,8 @@ def initialize(inputpath, trainpath):
     testUsers = getFilteredUserLikes(inputPath, 0, 2000)[0]
   global pro
   pro = getProfiles()
+  global stats
+  stats = None
 
 def knnSingle(userid, k, col, classify, weighted, default):
   js = []
@@ -182,7 +184,7 @@ def weightedAverage(userid, col, default, bias, minlike = 0, maxlike = 2000):
     stat = stats[(like, pers[col])]
     if stat[0] < minlike or stat[0] > maxlike: continue
     if stat[0] == 1: weight = 1
-    else: weight = (5 + log(stat[0])) / (0.1 + stat[2])
+    else: weight = 1 / (0.00001 + stat[2])
     pairs.append((stat[1], weight))
   if len(pairs) == 0: return default
   return sum([pair[0]*pair[1] for pair in pairs])/sum([pair[1] for pair in pairs]) + bias
@@ -232,10 +234,10 @@ def weightedAverageAll():
     subtestrange = testrange[i * 950:(i+1) * 950]
     traindata = set(range(0,9500)) - set(subtestrange)
     buildStats(traindata, False)
-    results.append((i, 4) + weightedAverageRange(subtestrange, 4, 3.909, -0.064, 7, 122))
-    results.append((i, 5) + weightedAverageRange(subtestrange, 5, 3.446, 0.077, 4, 400))
-    results.append((i, 6) + weightedAverageRange(subtestrange, 6, 3.487, -0.007))
-    results.append((i, 7) + weightedAverageRange(subtestrange, 7, 3.584, 0.01))
-    results.append((i, 8) + weightedAverageRange(subtestrange, 8, 2.732, -0.0729))
+    results.append((i, 4) + weightedAverageRange(subtestrange, 4, 3.909, -0.064, 5, 38))
+    results.append((i, 5) + weightedAverageRange(subtestrange, 5, 3.446, 0.077, 5, 164))
+    results.append((i, 6) + weightedAverageRange(subtestrange, 6, 3.487, -0.007, 5, 164))
+    results.append((i, 7) + weightedAverageRange(subtestrange, 7, 3.584, 0.01, 25, 42))
+    results.append((i, 8) + weightedAverageRange(subtestrange, 8, 2.732, -0.0729, 5, 51))
     for j in range(-5, 0, 1): print(results[j])
   return results
