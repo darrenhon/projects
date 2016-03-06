@@ -4,6 +4,7 @@ initializeKnn <- function(input)
 {
   python.load('knn.py')
   python.exec(sprintf("initialize('%s', '/data/training')", input))
+  python.exec("loadStats()")
 }
 
 predictGenderByLikes <- function(userid)
@@ -18,6 +19,16 @@ predictAgeByLikes <- function(userid)
   if (result == '3') return('25-34')
   if (result == '2') return('35-49')
   return('50-xx')
+}
+
+predictOpeByLikes <- function(userid)
+{
+  return(as.numeric(python.get(sprintf("weightedAverage('%s', 4, 3.909, -0.064, 5, 38)", userid))))
+}
+
+predictConByLikes <- function(userid)
+{
+  return(as.numeric(python.get(sprintf("weightedAverage('%s', 5, 3.446, 0.077, 5, 164)", userid))))
 }
 
 convertAge <-function(column)
