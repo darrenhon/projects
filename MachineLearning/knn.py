@@ -1,6 +1,9 @@
 import random
 import sys
-from math import pow, sqrt
+from math import pow, sqrt, log
+from statistics import pstdev, mean
+
+pers = dict([(4,'ope'),(5,'con'),(6,'ext'),(7,'agr'),(8,'neu')])
 
 def getFilteredUserLikes(path, minlikes, maxlikes):
   frel = open(path + '/relation/relation.csv', 'r')
@@ -58,13 +61,13 @@ def initialize(inputpath, trainpath):
   inputPath = inputpath
   global trainPath
   trainPath = trainpath
+  global trainUsers, trainPages
+  trainUsers, trainPages = getFilteredUserLikes(trainPath, 0, 2000)
   global testUsers
-  testUsers = getFilteredUserLikes(inputPath, 0, 2000)[0]
-  global trainUsers
   if inputPath == trainPath:
-    trainUsers = testUsers
+    testUsers = trainUsers
   else:
-    trainUsers = getFilteredUserLikes(trainPath, 0, 2000)[0]
+    testUsers = getFilteredUserLikes(inputPath, 0, 2000)[0]
   global pro
   pro = getProfiles()
 
@@ -79,11 +82,12 @@ def knnSingle(userid, k, col, classify, weighted, default):
   return predictknn(col, js, k, classify, weighted, default) if len(js) > 0 else default
 
 # knn
-def knnAll(k, sample, col, classify, weighted, default):
+def knnAll(k, sample, col, classify, weighted, default, bias):
   testrange = random.sample(range(0, len(pro)), sample)
   correct = 0
   se = 0
   count = 0
+  errs = []
   for i in testrange:
     count = count + 1
     if count % (len(testrange) / 10.0) == 0:
@@ -101,11 +105,15 @@ def knnAll(k, sample, col, classify, weighted, default):
     if classify:
       if predict == pro[i][col]: correct = correct + 1
     else:
-      se = se + pow(predict - float(pro[i][col]), 2)
+      predict = predict + bias
+      err = predict - float(pro[i][col])
+      errs.append(err)
+      se = se + pow(err, 2)
   if classify:
     print('acc', float(correct)/len(testrange))
   else:
     print('rmse', sqrt(float(se)/len(testrange)))
+  return errs
 
 def predictknn(col, js, k, classify, weighted, default):
     sortjs = sorted(js, key = lambda item:item[1], reverse=True)
@@ -127,7 +135,7 @@ def predictknn(col, js, k, classify, weighted, default):
         return max(maxsim)
       return maxsim[0]
     else:
-      return (sum([float(pro[item[0]][col]) * item[1] for item in sortjs]) / sum([item[1] for item in sortjs]))
+      return sum([float(pro[item[0]][col]) * item[1] for item in sortjs]) / sum([item[1] for item in sortjs])
 
 
 # flattening
@@ -148,3 +156,86 @@ def flatten(users, flattened):
     dum = fout.write(line + ','.join([str(item) for item in flattenlikes]) + '\n')
   fout.close()
   fpro.close()
+
+# weightedAverage
+def weightedAverageRange(testrange, col, default, bias = 0, minlike = 0, maxlike = 2000):
+  se = 0
+  errs = []
+  defcount = 0
+  for i in testrange:
+    predict = weightedAverage(pro[i][1], col, default, bias, minlike, maxlike)
+    if (predict == default): defcount = defcount + 1
+    err = predict - float(pro[i][col])
+    errs.append(err)
+    se = se + pow(err, 2)
+  rmse = sqrt(float(se)/len(testrange))
+  #print('rmse', rmse)
+  #print('defauls', defcount)
+  #print('err mean', mean(errs))
+  return (rmse, mean(errs), defcount)
+
+def weightedAverage(userid, col, default, bias, minlike = 0, maxlike = 2000):
+  likes = testUsers[userid]
+  pairs = []
+  for like in likes:
+    if (like, pers[col]) not in stats: continue
+    stat = stats[(like, pers[col])]
+    if stat[0] < minlike or stat[0] > maxlike: continue
+    if stat[0] == 1: weight = 1
+    else: weight = (5 + log(stat[0])) / (0.1 + stat[2])
+    pairs.append((stat[1], weight))
+  if len(pairs) == 0: return default
+  return sum([pair[0]*pair[1] for pair in pairs])/sum([pair[1] for pair in pairs]) + bias
+
+def loadStats():
+  global stats
+  if stats != None: return
+  stats = dict()
+  fin = open('likestats.csv', 'r')
+  for line in fin:
+    row = line.strip().split(',')
+    stats[(row[0],row[1])] = [float(row[2]), float(row[3]), float(row[4])]
+  fin.close()
+
+def buildStats(trainrange, save):
+  if save:
+    fout = open('likestats.csv', 'w')
+  global stats
+  stats = dict()
+  for i in trainrange:
+    user = pro[i]
+    likes = trainUsers[user[1]]
+    for like in likes:
+      for per in pers.items():
+        pair = (like, per[1])
+        value = float(user[per[0]]) 
+        if pair in stats:
+          stats[pair].append(value)
+        else:
+          stats[pair] = [value]
+  for item in stats.items():
+    values = item[1]
+    avg = mean(values)
+    stat = (len(values), avg, sqrt(sum([pow(value - avg, 2) for value in values])/len(values)))
+    stats[item[0]] = stat
+    if save:
+      row = item[0] + stat
+      fout.write(','.join([str(entry) for entry in item[0] + stat]) + '\n')
+  if save:
+    fout.close()
+  
+def weightedAverageAll():
+  testrange = random.sample(range(0, 9500), 9500)
+  results = []
+  for i in range(0,10):
+    print (i)
+    subtestrange = testrange[i * 950:(i+1) * 950]
+    traindata = set(range(0,9500)) - set(subtestrange)
+    buildStats(traindata, False)
+    results.append((i, 4) + weightedAverageRange(subtestrange, 4, 3.909, -0.064, 7, 122))
+    results.append((i, 5) + weightedAverageRange(subtestrange, 5, 3.446, 0.077, 4, 400))
+    results.append((i, 6) + weightedAverageRange(subtestrange, 6, 3.487, -0.007))
+    results.append((i, 7) + weightedAverageRange(subtestrange, 7, 3.584, 0.01))
+    results.append((i, 8) + weightedAverageRange(subtestrange, 8, 2.732, -0.0729))
+    for j in range(-5, 0, 1): print(results[j])
+  return results
