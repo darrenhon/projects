@@ -14,10 +14,10 @@ predictGenderByLikes <- function(userid)
 
 predictAgeByLikes <- function(userid)
 {
-  result = python.get(sprintf("knnSingle('%s', %d, %d, True, True, '4')", userid, 19, 2))
-  if (result == '4') return('xx-24')
-  if (result == '3') return('25-34')
-  if (result == '2') return('35-49')
+  result = round(as.numeric(python.get(sprintf("knnSingle('%s', %d, %d, True, True, '4')", userid, 19, 2))))
+  if (result == 4) return('xx-24')
+  if (result == 3) return('25-34')
+  if (result == 2) return('35-49')
   return('50-xx')
 }
 

@@ -3,7 +3,7 @@ import sys
 from math import pow, sqrt, log
 from statistics import pstdev, mean
 
-pers = dict([(4,'ope'),(5,'con'),(6,'ext'),(7,'agr'),(8,'neu')])
+pers = dict([(2,'age'),(4,'ope'),(5,'con'),(6,'ext'),(7,'agr'),(8,'neu')])
 
 def getFilteredUserLikes(path, minlikes, maxlikes):
   frel = open(path + '/relation/relation.csv', 'r')
@@ -133,7 +133,7 @@ def predictknn(col, js, k, classify, weighted, default):
           labelsim[label] = item[1]
       maxsim = [item[0] for item in list(labelsim.items()) if item[1] == max(labelsim.values())]
       if len(maxsim) > 1: 
-        print('Draw')
+        #print('Draw')
         return max(maxsim)
       return maxsim[0]
     else:
@@ -171,9 +171,6 @@ def weightedAverageRange(testrange, col, default, bias = 0, minlike = 0, maxlike
     errs.append(err)
     se = se + pow(err, 2)
   rmse = sqrt(float(se)/len(testrange))
-  #print('rmse', rmse)
-  #print('defauls', defcount)
-  #print('err mean', mean(errs))
   return (rmse, mean(errs), defcount)
 
 def weightedAverage(userid, col, default, bias, minlike = 0, maxlike = 2000):
@@ -234,6 +231,7 @@ def weightedAverageAll():
     subtestrange = testrange[i * 950:(i+1) * 950]
     traindata = set(range(0,9500)) - set(subtestrange)
     buildStats(traindata, False)
+    results.append((i, 2) + weightedAverageRange(subtestrange, 2, 4, 0, 9, 90))
     results.append((i, 4) + weightedAverageRange(subtestrange, 4, 3.909, -0.064, 5, 38))
     results.append((i, 5) + weightedAverageRange(subtestrange, 5, 3.446, 0.077, 5, 164))
     results.append((i, 6) + weightedAverageRange(subtestrange, 6, 3.487, -0.007, 5, 164))
