@@ -5,6 +5,8 @@ from statistics import pstdev, mean
 
 pers = dict([(2,'age'),(4,'ope'),(5,'con'),(6,'ext'),(7,'agr'),(8,'neu')])
 
+# private function
+# construct maps of users to likes
 def getFilteredUserLikes(path, minlikes, maxlikes):
   frel = open(path + '/relation/relation.csv', 'r')
   likes = dict()
@@ -35,6 +37,7 @@ def getFilteredUserLikes(path, minlikes, maxlikes):
     users[user] = users[user] & sfiltered
   return (users, filtered)
 
+# convert age into 1-4
 def bucketAge(age):
   if float(age) < 25:
     return '4'
@@ -44,6 +47,7 @@ def bucketAge(age):
     return '2'
   return '1'
 
+# private function to get user profiles
 def getProfiles():
   result = []
   fpro = open(trainPath + '/profile/profile.csv', 'r')
@@ -56,6 +60,8 @@ def getProfiles():
   fpro.close()
   return result
 
+# this function must be called before everything else to set the testing data path and training data path
+# have to be the same path for local test data
 def initialize(inputpath, trainpath):
   global inputPath
   inputPath = inputpath
@@ -73,6 +79,7 @@ def initialize(inputpath, trainpath):
   global stats
   stats = None
 
+# run knn for single instance
 def knnSingle(userid, k, col, classify, weighted, default):
   js = []
   ilikes = testUsers[userid]
@@ -83,7 +90,7 @@ def knnSingle(userid, k, col, classify, weighted, default):
     js.append((j, float(sim)/len(ilikes|jlikes)))
   return predictknn(col, js, k, classify, weighted, default) if len(js) > 0 else default
 
-# knn
+# run knn on a number of random sample
 def knnAll(k, sample, col, classify, weighted, default, bias):
   testrange = random.sample(range(0, len(pro)), sample)
   correct = 0
@@ -117,6 +124,8 @@ def knnAll(k, sample, col, classify, weighted, default, bias):
     print('rmse', sqrt(float(se)/len(testrange)))
   return errs
 
+# private function
+# run knn given jacard similarities
 def predictknn(col, js, k, classify, weighted, default):
     sortjs = sorted(js, key = lambda item:item[1], reverse=True)
     if len(sortjs) > k:
@@ -140,7 +149,7 @@ def predictknn(col, js, k, classify, weighted, default):
       return sum([float(pro[item[0]][col]) * item[1] for item in sortjs]) / sum([item[1] for item in sortjs])
 
 
-# flattening
+# flattening (not used anymore but keep it here)
 def flatten(users, flattened):
   fout = open('flatten.csv', 'w')
   fpro = open('..\profile\profile.csv', 'r')
@@ -159,7 +168,8 @@ def flatten(users, flattened):
   fout.close()
   fpro.close()
 
-# weightedAverage
+# proprietary model
+# test over a range
 def weightedAverageRange(testrange, col, default, bias = 0, minlike = 0, maxlike = 2000):
   se = 0
   errs = []
@@ -173,6 +183,7 @@ def weightedAverageRange(testrange, col, default, bias = 0, minlike = 0, maxlike
   rmse = sqrt(float(se)/len(testrange))
   return (rmse, mean(errs), defcount)
 
+# predict single instance
 def weightedAverage(userid, col, default, bias, minlike = 0, maxlike = 2000):
   likes = testUsers[userid]
   pairs = []
@@ -186,6 +197,7 @@ def weightedAverage(userid, col, default, bias, minlike = 0, maxlike = 2000):
   if len(pairs) == 0: return default
   return sum([pair[0]*pair[1] for pair in pairs])/sum([pair[1] for pair in pairs]) + bias
 
+# load the csv into stats
 def loadStats():
   global stats
   if stats != None: return
@@ -196,6 +208,8 @@ def loadStats():
     stats[(row[0],row[1])] = [float(row[2]), float(row[3]), float(row[4])]
   fin.close()
 
+# proprietary model need stats to run
+# run this function for the first time and stats will be saved as a csv
 def buildStats(trainrange, save):
   if save:
     fout = open('likestats.csv', 'w')
@@ -223,6 +237,7 @@ def buildStats(trainrange, save):
   if save:
     fout.close()
   
+# test over all data
 def weightedAverageAll():
   testrange = random.sample(range(0, 9500), 9500)
   results = []
