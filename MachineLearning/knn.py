@@ -80,6 +80,10 @@ def initialize(inputpath, trainpath):
   stats = None
 
 # run knn for single instance
+# col is column number. for example age is 2, gender is 3, ope is 4, etc.
+# classify is a boolean. True for classification and False for regression
+# weighted is a boolean. True for using jaccard similarities as weight. False for equal weights
+# default is the value when the user has no neighbor. Usually the baseline value.
 def knnSingle(userid, k, col, classify, weighted, default):
   js = []
   ilikes = testUsers[userid]
@@ -91,6 +95,11 @@ def knnSingle(userid, k, col, classify, weighted, default):
   return predictknn(col, js, k, classify, weighted, default) if len(js) > 0 else default
 
 # run knn on a number of random sample
+# col is column number. for example age is 2, gender is 3, ope is 4, etc.
+# classify is a boolean. True for classification and False for regression
+# weighted is a boolean. True for using jaccard similarities as weight. False for equal weights
+# default is the value when the user has no neighbor. Usually the baseline value.
+# bias is a numeric value for regression only. 
 def knnAll(k, sample, col, classify, weighted, default, bias):
   testrange = random.sample(range(0, len(pro)), sample)
   correct = 0
@@ -170,6 +179,12 @@ def flatten(users, flattened):
 
 # proprietary model
 # test over a range
+# testrange is a range object. for example range(0,1000) to test the first 1000 data.
+# col is column number. for example age is 2, gender is 3, ope is 4, etc.
+# default is the value when the user has no neighbor. Usually the baseline value.
+# bias is the value added to the predicted value
+# minlike is the minimum number of users who like the pages
+# maxlike is the maximum number of users who like the pages
 def weightedAverageRange(testrange, col, default, bias = 0, minlike = 0, maxlike = 2000):
   se = 0
   errs = []
@@ -210,6 +225,8 @@ def loadStats():
 
 # proprietary model need stats to run
 # run this function for the first time and stats will be saved as a csv
+# trainrange is the range to generate the stats. For example range(0,8500) to generate stats for top 8500 data
+# save is a boolean whether to save the csv file
 def buildStats(trainrange, save):
   if save:
     fout = open('likestats.csv', 'w')
