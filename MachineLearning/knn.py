@@ -61,7 +61,7 @@ def getProfiles():
   return result
 
 # this function must be called before everything else to set the testing data path and training data path
-# have to be the same path for local test data
+# For testing local data, use the same path for both parameters
 def initialize(inputpath, trainpath):
   global inputPath
   inputPath = inputpath
@@ -159,7 +159,7 @@ def predictknn(col, js, k, classify, weighted, default):
 
 
 # flattening (not used anymore but keep it here)
-def flatten(users, flattened):
+def flatten(users, filtered):
   fout = open('flatten.csv', 'w')
   fpro = open('..\profile\profile.csv', 'r')
   line = fpro.readline().strip()
