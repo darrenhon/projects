@@ -1,2 +1,2 @@
 # projects
-This is a collection of my school projects
+This is a collection of my personal projects
