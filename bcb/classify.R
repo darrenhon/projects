@@ -1,8 +1,16 @@
 library(rpart) #decisiontree
 library(adabag) #adaboost
-library(e1071) #naivebayes
+library(e1071) #naivebayes and svm
 library(nnet) #multinom and ann
 library(class) #knn
+
+Svm <- function(df, target, bin=F)
+{
+  message('svm ', target)
+  train = function(data, target) svm(as.formula(paste(target,'~.',sep='')), data, family=binomial())
+  pdt = function(model, data) predict(model, data[,!names(data) %in% target])
+  kxvalid(5, df, target, train, pdt, T)
+}
 
 ann <- function(df, target, size, bin=F)
 {
