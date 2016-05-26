@@ -1,7 +1,23 @@
-library(rpart)
-library(adabag)
-library(e1071)
-library(nnet)
+library(rpart) #decisiontree
+library(adabag) #adaboost
+library(e1071) #naivebayes
+library(nnet) #multinom and ann
+library(class) #knn
+
+ann <- function(df, target, size)
+{
+  y = class.ind(df[,target])
+  train = function(data, target) nnet(data[,!names(data) %in% target], class.ind(data[,target]), size=size, softmax=T, maxit=200)
+  pdt = function(model, data) predict(model, data[,!names(data) %in% target], type='class')
+  kxvalid(5, df, target, train, pdt)
+}
+
+Knn <- function(df, target, k)
+{
+  train = function(data, target) data
+  pdt = function(model, data) knn(train = model[,!names(model) %in% target], test = data[,!names(data) %in% target], cl = model[,target], k = k) 
+  kxvalid(5, df, target, train, pdt)
+}
 
 multinomlogistic <- function(df, target)
 {
@@ -27,8 +43,8 @@ naivebayes <- function(df, target)
 
 adaboost <- function(df, target)
 {
-  #message('adaboost ', target)
-  #message('acc ', 1 - boosting.cv(as.formula(paste(target,'~.',sep='')), df, v = 5)$error)
+  message('adaboost ', target)
+  message('acc ', 1 - boosting.cv(as.formula(paste(target,'~.',sep='')), df, v = 5)$error)
 }
 
 decisiontree <- function(df, target)
