@@ -88,7 +88,7 @@ kxvalid <- function(k, df, target, train, pdt, bin)
       message(k, '-fold ', i, ' round pre ', tp / (tp + fp), ' sen ', tp / (tp + fn), ' spe ', tn/(tn+fp))
     }
   }
-  message('acc ', correct / nrow(df))
+  message('acc ', tt / nrow(df))
   message('majority ', max(table(df[,target]))/nrow(df))
   if (bin) message('pre ', ttp / (ttp + tfp), ' sen ', ttp / (ttp + tfn), ' spe ', ttn/(ttn+tfp))
 }
