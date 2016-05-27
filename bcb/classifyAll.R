@@ -9,12 +9,12 @@ for (col in facCol) df[,col] = as.factor(df[,col])
 
 # thrityday
 df2 = df[,!names(df) %in% c('nextCost_b','nextLOS_b')]
-ann(df2, 'thirtyday', 10)
+ann(df2, 'thirtyday', 10, T)
 logistic(df2, 'thirtyday')
-naivebayes(df2, 'thirtyday')
+naivebayes(df2, 'thirtyday', T)
 #adaboost(df2, 'thirtyday')
-decisiontree(df2, 'thirtyday')
-svm(df2, 'thirtyday')
+decisiontree(df2, 'thirtyday', T)
+svm(df2, 'thirtyday', T)
 
 # nextCost_b
 df2 = df[,!names(df) %in% c('thirtyday','nextLOS_b')]
