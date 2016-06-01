@@ -3,10 +3,10 @@ library(data.table)
 
 path = commandArgs(trailingOnly = TRUE)[1]
 df = fread(path, data.table=F)
-df = df[,!names(df) %in% c('diag_p', 'proc_p', 'admitDT', 'dischargeDT', 'PID', 'diag_p_ccs', 'proc_p_ccs', 'nextCost', 'nextLOS','LOS_b','cost_b')]
+df = df[,!names(df) %in% c('admitDT', 'dischargeDT', 'PID', 'nextCost', 'nextLOS','LOS_b','cost_b')]
 
 # turn variables into factor
-facCol = c('thirtyday','nextLOS_b','nextCost_b','type_care','gender','srcsite','srcroute','schedule','oshpd_destination','race_grp','msdrg_severity_ill','sameday')
+facCol = c('thirtyday','nextLOS_b','nextCost_b','type_care','gender','srcsite','srcroute','schedule','oshpd_destination','race_grp','msdrg_severity_ill','sameday','diag_p_elix')
 for (col in facCol) df[,col] = as.factor(df[,col])
 
 # flatten categorical columns (for svm)
