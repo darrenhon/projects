@@ -1,12 +1,33 @@
 source('classify.R')
-library(data.table)
-
 path = commandArgs(trailingOnly = TRUE)[1]
+target = commandArgs(trailingOnly = TRUE)[2]
+method = commandArgs(trailingOnly = TRUE)[3]
+
+library(data.table)
 df = fread(path, data.table=F)
-df = df[,!names(df) %in% c('admitDT', 'dischargeDT', 'PID', 'nextCost', 'nextLOS','LOS_b','cost_b')]
+
+# remove unused variables
+df = df[,!names(df) %in% c('admitDT', 'dischargeDT', 'PID', 'nextCost', 'nextLOS','LOS','cost')]
+
+# turn cost_b, nextCost_b, LOS_b, nextLOS_b into binary
+df[df$cost_b <= 3, 'cost_b'] = 0
+df[df$cost_b > 3, 'cost_b'] = 1
+df[df$nextCost_b <= 3, 'nextCost_b'] = 0
+df[df$nextCost_b > 3, 'nextCost_b'] = 1
+df[df$LOS_b <= 4, 'LOS_b'] = 0
+df[df$LOS_b > 4, 'LOS_b'] = 1
+df[df$nextLOS_b <= 4, 'nextLOS_b'] = 0
+df[df$nextLOS_b > 4, 'nextLOS_b'] = 1
+
+fdemo = c('agyradm', 'gender', 'race_grp')
+fclos = c('cost_b', 'LOS_b')
+fadmin = c('schedule', 'srcsite', 'srcroute', 'msdrg_severity_ill', 'type_care', 'sameday', 'oshpd_destination')
+fcom = names(df)[grepl('ch_com', names(df))]
+fcum = c('coms', 'cons', 'er6m', 'adms')
+fres = c('thirtyday', 'nextCost_b', 'nextLOS_b')
 
 # turn variables into factor
-facCol = c('thirtyday','nextLOS_b','nextCost_b','type_care','gender','srcsite','srcroute','schedule','oshpd_destination','race_grp','msdrg_severity_ill','sameday','diag_p_elix')
+facCol = c('thirtyday','LOS_b', 'cost_b', 'nextLOS_b','nextCost_b','type_care','gender','srcsite','srcroute','schedule','oshpd_destination','race_grp','msdrg_severity_ill','sameday', 'merged', fcom)
 for (col in facCol) df[,col] = as.factor(df[,col])
 
 # flatten categorical columns (for svm)
@@ -19,23 +40,13 @@ for (col in facCol) df[,col] = as.factor(df[,col])
 #  df = cbind(df, newCols)
 #}
 
-# thrityday
-df2 = df[,!names(df) %in% c('nextCost_b','nextLOS_b')]
-ann(df2, 'thirtyday', 10, T)
-logistic(df2, 'thirtyday')
-naivebayes(df2, 'thirtyday', T)
-decisiontree(df2, 'thirtyday', T)
-
-# nextCost_b
-df2 = df[,!names(df) %in% c('thirtyday','nextLOS_b')]
-ann(df2, 'nextCost_b', 10)
-multinomlogistic(df2, 'nextCost_b')
-naivebayes(df2, 'nextCost_b')
-decisiontree(df2, 'nextCost_b')
-
-# nextLOS_b
-df2 = df[,!names(df) %in% c('nextCost_b','thirtyday')]
-ann(df2, 'nextLOS_b', 10)
-multinomlogistic(df2, 'nextLOS_b')
-naivebayes(df2, 'nextLOS_b')
-decisiontree(df2, 'nextLOS_b')
+fsets = list(fdemo, fclos, fadmin, fcom, fcum)
+for (i in 1:length(fsets))
+{
+  feats = c(target)
+  for (j in 1:i) feats=c(feats, fsets[[j]])
+  message('feature set 1:', j)
+  if (grepl('dt', method)) decisiontree(df[,feats], target)
+  if (grepl('lr', method)) logistic(df[,feats], target)
+  if (grepl('ada', method)) adaboost(df[,feats], target)
+}
