@@ -53,20 +53,44 @@ logistic <- function(df, target)
   kxvalid(5, df, target, train, pdt)
 }
 
-adaboost <- function(df, target)
+adaboost <- function(df, target, initialcp = 0.01)
 {
   message('adaboost ', target)
-  train = function(data, target) boosting(as.formula(paste(target,'~.',sep='')), data, boos=T, mfinal=5)
+
+  formula = as.formula(paste(target,'~.',sep=''))
+
+  # find a cp that gives non-trivial leaves
+  cp = initialcp
+  while (T)
+  {
+    message('cp ', cp)
+    tree = rpart(formula, df, control=rpart.control(cp = cp, maxdepth=10))
+    if (nrow(tree$frame) == 1) cp = cp / 2 else break
+  }
+
+  train = function(data, target) boosting(formula, data, boos=T, mfinal=10, control = rpart.control(cp = cp, maxdepth=10))
   pdt = function(model, data) predict.boosting(model, data)$prob[,2]
   kxvalid(5, df, target, train, pdt)
 }
 
-decisiontree <- function(df, target)
+decisiontree <- function(df, target, initialcp = 0.01)
 {
   message('decisiontree ', target)
+
+  formula = as.formula(paste(target,'~.',sep=''))
+
+  # find a cp that gives non-trivial leaves
+  cp = initialcp
+  while (T)
+  {
+    message('cp ', cp)
+    tree = rpart(formula, df, control=rpart.control(cp = cp, maxdepth=10))
+    if (nrow(tree$frame) == 1) cp = cp / 2 else break
+  }
+
   train = function(data, target) 
   {
-    tree = rpart(as.formula(paste(target,'~.',sep='')), data, method='class', control=rpart.control(cp = 0.0001))
+    tree = rpart(formula, data, method='class', control=rpart.control(cp = cp, maxdepth=10))
     return(prune(tree, cp=tree$cptable[which.min(tree$cptable[,"xerror"]),"CP"]))
   }
   pdt = function(model, data) predict(model, data)[,'1']
