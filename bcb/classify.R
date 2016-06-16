@@ -68,7 +68,7 @@ adaboost <- function(df, target, initialcp = 0.01)
     if (nrow(tree$frame) == 1) cp = cp / 2 else break
   }
 
-  train = function(data, target) boosting(formula, data, boos=T, mfinal=10, control = rpart.control(cp = cp, maxdepth=10))
+  train = function(data, target) boosting(formula, data, boos=F, mfinal=5, control = rpart.control(cp = cp, maxdepth=10))
   pdt = function(model, data) predict.boosting(model, data)$prob[,2]
   kxvalid(5, df, target, train, pdt)
 }
