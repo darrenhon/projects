@@ -64,7 +64,7 @@ adaboost <- function(df, target, initialcp = 0.01)
   while (T)
   {
     message('cp ', cp)
-    tree = rpart(formula, df, control=rpart.control(cp = cp, maxdepth=10))
+    tree = rpart(formula, df, method='class', control=rpart.control(cp = cp, maxdepth=10))
     if (nrow(tree$frame) == 1) cp = cp / 2 else break
   }
 
@@ -84,7 +84,7 @@ decisiontree <- function(df, target, initialcp = 0.01)
   while (T)
   {
     message('cp ', cp)
-    tree = rpart(formula, df, control=rpart.control(cp = cp, maxdepth=10))
+    tree = rpart(formula, df, method='class', control=rpart.control(cp = cp, maxdepth=10))
     if (nrow(tree$frame) == 1) cp = cp / 2 else break
   }
 
