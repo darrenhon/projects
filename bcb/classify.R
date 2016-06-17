@@ -1,6 +1,5 @@
 library(rpart) #decisiontree
 library(adabag) #adaboost
-library(stats) #optim
 library(pROC) #auc
 
 #library(e1071) #naivebayes and svm
@@ -45,15 +44,15 @@ library(pROC) #auc
 #  kxvalid(5, df, target, train, predict, bin)
 #}
 
-logistic <- function(df, target)
+logistic <- function(df, target, undersam = F)
 {
   message('logistic ', target)
   train = function(data, target) glm(as.formula(paste(target,'~.',sep='')), data, family=binomial())
   pdt = function(model, data) predict(model, data, type='response')
-  kxvalid(5, df, target, train, pdt)
+  kxvalid(5, df, target, train, pdt, undersam)
 }
 
-adaboost <- function(df, target, initialcp = 0.01)
+adaboost <- function(df, target, initialcp = 0.01, undersam = F)
 {
   message('adaboost ', target)
 
@@ -61,19 +60,21 @@ adaboost <- function(df, target, initialcp = 0.01)
 
   # find a cp that gives non-trivial leaves
   cp = initialcp
-  while (T)
+  while (cp >= 0.0001)
   {
     message('cp ', cp)
     tree = rpart(formula, df, method='class', control=rpart.control(cp = cp, maxdepth=10))
     if (nrow(tree$frame) == 1) cp = cp / 2 else break
   }
+  # if cp is too small, don't do boostrapping
+  boos = cp >= 0.0001
 
   train = function(data, target) boosting(formula, data, boos=F, mfinal=5, control = rpart.control(cp = cp, maxdepth=10))
   pdt = function(model, data) predict.boosting(model, data)$prob[,2]
-  kxvalid(5, df, target, train, pdt)
+  kxvalid(5, df, target, train, pdt, undersam)
 }
 
-decisiontree <- function(df, target, initialcp = 0.01)
+decisiontree <- function(df, target, initialcp = 0.01, undersam = F)
 {
   message('decisiontree ', target)
 
@@ -81,7 +82,7 @@ decisiontree <- function(df, target, initialcp = 0.01)
 
   # find a cp that gives non-trivial leaves
   cp = initialcp
-  while (T)
+  while (cp >= 0.0001)
   {
     message('cp ', cp)
     tree = rpart(formula, df, method='class', control=rpart.control(cp = cp, maxdepth=10))
@@ -94,46 +95,49 @@ decisiontree <- function(df, target, initialcp = 0.01)
     return(prune(tree, cp=tree$cptable[which.min(tree$cptable[,"xerror"]),"CP"]))
   }
   pdt = function(model, data) predict(model, data)[,'1']
-  kxvalid(5, df, target, train, pdt)
+  kxvalid(5, df, target, train, pdt, undersam)
 }
 
-# train(data, target)
-# pdt(model, data)
-kxvalid <- function(k, df, target, train, pdt)
+# train(data, target) returns model
+# pdt(model, data) returns probabilities
+kxvalid <- function(k, df, target, train, pdt, undersam)
 {
   tauc = 0
-  tt = 0
-  ttp = NA
-  ttn = NA
-  tfp = NA
-  tfn = NA
+  tpre = 0
+  tsen = 0
   for (i in 1:k)
   {
     b = ((i - 1) * nrow(df) / k) + 1
     e = i * nrow(df) / k
-    prob = pdt(train(df[-(b:e),], target), df[b:e,]) 
+    dftrain = df[-(b:e),]
+    if (undersam) dftrain = undersampling(dftrain, target)
+    prob = pdt(train(dftrain, target), df[b:e,]) 
     ans = df[b:e,target]
-    op = optimize(acc, c(0,1), response=ans, prob=prob, maximum=T)
-    res = classify(op$maximum, levels(ans), prob)
-    t = sum(res == ans)
-    thisauc = auc(roc(ans, prob))
-    message(k, '-fold ', i, ' round acc ', t / (floor(e) - floor(b) + 1), ' auc ', thisauc)
+    oppre = optimize(pre, c(0,1), response=ans, prob=prob, maximum=T)
+    thisauc = auc(ans, prob)
     tauc = tauc + thisauc
-    tt = tt + t
-    tp = sum(res == ans & res == 1)
-    tn = sum(res == ans & res == 0)
-    fp = sum(res != ans & res == 1)
-    fn = sum(res != ans & res == 0)
-    ttp = if (is.na(ttp)) tp else ttp + tp
-    ttn = if (is.na(ttn)) tn else ttn + tn
-    tfp = if (is.na(tfp)) fp else tfp + fp
-    tfn = if (is.na(tfn)) fn else tfn + fn
-    message(k, '-fold ', i, ' round pre ', tp / (tp + fp), ' sen ', tp / (tp + fn), ' spe ', tn/(tn+fp))
+    tpre = tpre + oppre$objective
+    thissen = sen(oppre$maximum, ans, prob)
+    tsen = tsen + thissen
+    message(k, '-fold ', i, ' round auc ', thisauc, ' pre ', oppre$objective, ' sen ', thissen)
   }
-  message('acc ', tt / nrow(df))
-  message('auc ', tauc / k)
+  message('auc ', tauc / k, ' pre ', tpre / k, ' sen ', tsen / k)
   message('majority ', max(table(df[,target]))/nrow(df))
-  message('pre ', ttp / (ttp + tfp), ' sen ', ttp / (ttp + tfn), ' spe ', ttn/(ttn+tfp))
+}
+
+undersampling <- function(data, target)
+{
+  tb = table(data[,target])
+  minorlab = names(tb[tb == min(tb)])[1]
+  for (lab in levels(data[,target]))
+  {
+    if (lab != minorlab)
+    {
+      removes = sample(which(data[,target] == lab), tb[lab] - tb[minorlab])
+      data = data[-removes,]
+    }
+  }
+  return(data)
 }
 
 acc <- function(thres, response, prob)
@@ -155,4 +159,22 @@ classify <- function(thres, lvl, prob)
   truth[trues] = lvl[2]
   truth[-trues] = lvl[1]
   return(truth)
+}
+
+pre <- function(thres, response, prob)
+{
+  res = classify(thres, levels(response), prob)
+  conf = table(res, response)
+  if (!'1' %in% rownames(conf)) return(0) #should be 0/0
+  if (!'1' %in% colnames(conf)) return(0)
+  return(conf['1','1'] / sum(conf['1',]))
+}
+
+sen <- function(thres, response, prob)
+{
+  res = classify(thres, levels(response), prob)
+  conf = table(res, response)
+  if (!'1' %in% colnames(conf)) return(0) #should be 0/0
+  if (!'1' %in% rownames(conf)) return(0)
+  return(conf['1','1'] / sum(conf[,'1']))
 }
