@@ -54,6 +54,9 @@ logistic <- function(df, target, undersam = F)
 
 adaboost <- function(df, target, initialcp = 0.01, undersam = F)
 {
+  # adaboost is too slow. random sample 1/10
+  df = df[sort(sample(1:nrow(df), nrow(df) / 10)),]
+
   message('adaboost ', target)
 
   formula = as.formula(paste(target,'~.',sep=''))
@@ -67,9 +70,10 @@ adaboost <- function(df, target, initialcp = 0.01, undersam = F)
     if (nrow(tree$frame) == 1) cp = cp / 2 else break
   }
   # if cp is too small, don't do boostrapping
+  message('final cp ', cp)
   boos = cp >= 0.0001
 
-  train = function(data, target) boosting(formula, data, boos=F, mfinal=5, control = rpart.control(cp = cp, maxdepth=10))
+  train = function(data, target) boosting(formula, data, boos=boos, mfinal=10, control = rpart.control(cp = cp, maxdepth=10))
   pdt = function(model, data) predict.boosting(model, data)$prob[,2]
   kxvalid(5, df, target, train, pdt, undersam)
 }
@@ -88,6 +92,7 @@ decisiontree <- function(df, target, initialcp = 0.01, undersam = F)
     tree = rpart(formula, df, method='class', control=rpart.control(cp = cp, maxdepth=10))
     if (nrow(tree$frame) == 1) cp = cp / 2 else break
   }
+  message('final cp ', cp)
 
   train = function(data, target) 
   {
@@ -113,13 +118,14 @@ kxvalid <- function(k, df, target, train, pdt, undersam)
     if (undersam) dftrain = undersampling(dftrain, target)
     prob = pdt(train(dftrain, target), df[b:e,]) 
     ans = df[b:e,target]
-    oppre = optimize(pre, c(0,1), response=ans, prob=prob, maximum=T)
+    op = optimize(fscore, c(0,1), response=ans, prob=prob, maximum=T)
     thisauc = auc(ans, prob)
+    thissen = sensitivity(op$maximum, ans, prob)
+    thispre = precision(op$maximum, ans, prob)
     tauc = tauc + thisauc
-    tpre = tpre + oppre$objective
-    thissen = sen(oppre$maximum, ans, prob)
+    tpre = tpre + thispre
     tsen = tsen + thissen
-    message(k, '-fold ', i, ' round auc ', thisauc, ' pre ', oppre$objective, ' sen ', thissen)
+    message(k, '-fold ', i, ' round auc ', thisauc, ' pre ', thispre, ' sen ', thissen, ' f-score ', op$objective)
   }
   message('auc ', tauc / k, ' pre ', tpre / k, ' sen ', tsen / k)
   message('majority ', max(table(df[,target]))/nrow(df))
@@ -161,20 +167,25 @@ classify <- function(thres, lvl, prob)
   return(truth)
 }
 
-pre <- function(thres, response, prob)
+precision <- function(conf)
 {
-  res = classify(thres, levels(response), prob)
-  conf = table(res, response)
-  if (!'1' %in% rownames(conf)) return(0) #should be 0/0
+  if (!'1' %in% rownames(conf)) return(NaN) #should be 0/0
   if (!'1' %in% colnames(conf)) return(0)
   return(conf['1','1'] / sum(conf['1',]))
 }
 
-sen <- function(thres, response, prob)
+sensitivity <- function(conf)
+{
+  if (!'1' %in% colnames(conf)) return(NaN) #should be 0/0
+  if (!'1' %in% rownames(conf)) return(0)
+  return(conf['1','1'] / sum(conf[,'1']))
+}
+
+fscore <- function(thres, response, prob)
 {
   res = classify(thres, levels(response), prob)
   conf = table(res, response)
-  if (!'1' %in% colnames(conf)) return(0) #should be 0/0
-  if (!'1' %in% rownames(conf)) return(0)
-  return(conf['1','1'] / sum(conf[,'1']))
+  pre = precision(conf)
+  sen = sensitivity(conf)
+  return((2*pre*sen)/(pre+sen))
 }
