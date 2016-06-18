@@ -118,10 +118,12 @@ kxvalid <- function(k, df, target, train, pdt, undersam)
     if (undersam) dftrain = undersampling(dftrain, target)
     prob = pdt(train(dftrain, target), df[b:e,]) 
     ans = df[b:e,target]
-    op = optimize(fscore, c(0,1), response=ans, prob=prob, maximum=T)
     thisauc = auc(ans, prob)
-    thissen = sensitivity(op$maximum, ans, prob)
-    thispre = precision(op$maximum, ans, prob)
+    op = optimize(fscore, c(0,1), response=ans, prob=prob, maximum=T)
+    res = classify(op$maximum, prob)
+    conf = table(res, ans)
+    thissen = sensitivity(conf)
+    thispre = precision(conf)
     tauc = tauc + thisauc
     tpre = tpre + thispre
     tsen = tsen + thissen
@@ -148,25 +150,26 @@ undersampling <- function(data, target)
 
 acc <- function(thres, response, prob)
 {
-  lvl = levels(response)
-  tb = table(response == classify(thres, lvl, prob))
+  tb = table(response == classify(thres, prob))
   return(tb['TRUE'] / sum(tb))
 }
 
-classify <- function(thres, lvl, prob)
+# assume binary classes '0' and '1'
+classify <- function(thres, prob)
 {
   truth = prob >= thres
   trues = which(truth)
   if (length(trues) == 0)
   {
-    truth[] = lvl[1]
+    truth[] = '0'
     return(truth)
   }
-  truth[trues] = lvl[2]
-  truth[-trues] = lvl[1]
+  truth[trues] = '1'
+  truth[-trues] = '0'
   return(truth)
 }
 
+# assume binary classes '0' and '1'
 precision <- function(conf)
 {
   if (!'1' %in% rownames(conf)) return(NaN) #should be 0/0
@@ -174,6 +177,7 @@ precision <- function(conf)
   return(conf['1','1'] / sum(conf['1',]))
 }
 
+# assume binary classes '0' and '1'
 sensitivity <- function(conf)
 {
   if (!'1' %in% colnames(conf)) return(NaN) #should be 0/0
@@ -183,7 +187,7 @@ sensitivity <- function(conf)
 
 fscore <- function(thres, response, prob)
 {
-  res = classify(thres, levels(response), prob)
+  res = classify(thres, prob)
   conf = table(res, response)
   pre = precision(conf)
   sen = sensitivity(conf)
