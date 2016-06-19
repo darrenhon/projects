@@ -54,8 +54,8 @@ logistic <- function(df, target, undersam = F)
 
 adaboost <- function(df, target, initialcp = 0.01, undersam = F)
 {
-  # adaboost is too slow. random sample 1/10
-  df = df[sort(sample(1:nrow(df), nrow(df) / 10)),]
+  # adaboost is too slow. random sample 1/2
+  df = df[sort(sample(1:nrow(df), nrow(df) / 2)),]
 
   message('adaboost ', target)
 
@@ -69,11 +69,11 @@ adaboost <- function(df, target, initialcp = 0.01, undersam = F)
     tree = rpart(formula, df, method='class', control=rpart.control(cp = cp, maxdepth=10))
     if (nrow(tree$frame) == 1) cp = cp / 2 else break
   }
-  # if cp is too small, don't do boostrapping
   message('final cp ', cp)
-  boos = cp >= 0.0001
+  # if cp is too small, don't do boostrapping
+  #boos = cp >= 0.0001
 
-  train = function(data, target) boosting(formula, data, boos=boos, mfinal=10, control = rpart.control(cp = cp, maxdepth=10))
+  train = function(data, target) boosting(formula, data, boos=F, mfinal=10, control = rpart.control(cp = cp, maxdepth=10))
   pdt = function(model, data) predict.boosting(model, data)$prob[,2]
   kxvalid(5, df, target, train, pdt, undersam)
 }
