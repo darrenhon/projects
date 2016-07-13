@@ -44,18 +44,18 @@ library(pROC) #auc
 #  kxvalid(5, df, target, train, predict, bin)
 #}
 
-logistic <- function(df, target, undersam = F)
+logistic <- function(df, target, opfunc, undersam)
 {
   message('logistic ', target)
   train = function(data, target) glm(as.formula(paste(target,'~.',sep='')), data, family=binomial())
   pdt = function(model, data) predict(model, data, type='response')
-  kxvalid(5, df, target, train, pdt, undersam)
+  return(kxvalid(5, df, target, train, pdt, opfunc, undersam))
 }
 
-adaboost <- function(df, target, initialcp = 0.01, undersam = F)
+adaboost <- function(df, target, opfunc, undersam, initialcp = 0.01)
 {
   # adaboost is too slow. random sample 1/5
-  df = df[sort(sample(1:nrow(df), nrow(df) / 5)),]
+  #df = df[sort(sample(1:nrow(df), nrow(df) / 5)),]
 
   message('adaboost ', target)
 
@@ -71,12 +71,12 @@ adaboost <- function(df, target, initialcp = 0.01, undersam = F)
   }
   message('final cp ', cp)
 
-  train = function(data, target) boosting(formula, data, boos=F, mfinal=20, control = rpart.control(cp = cp, maxdepth=10))
+  train = function(data, target) boosting(formula, data, boos=F, mfinal=20, control = rpart.control(cp = cp))
   pdt = function(model, data) predict.boosting(model, data)$prob[,2]
-  kxvalid(5, df, target, train, pdt, undersam)
+  return(kxvalid(5, df, target, train, pdt, opfunc, undersam))
 }
 
-decisiontree <- function(df, target, initialcp = 0.01, undersam = F)
+decisiontree <- function(df, target, opfunc, undersam, initialcp = 0.01)
 {
   message('decisiontree ', target)
 
@@ -94,41 +94,50 @@ decisiontree <- function(df, target, initialcp = 0.01, undersam = F)
 
   train = function(data, target) 
   {
-    tree = rpart(formula, data, method='class', control=rpart.control(cp = cp, maxdepth=10))
+    tree = rpart(formula, data, method='class', control=rpart.control(cp = cp))
     return(prune(tree, cp=tree$cptable[which.min(tree$cptable[,"xerror"]),"CP"]))
   }
   pdt = function(model, data) predict(model, data)[,'1']
-  kxvalid(5, df, target, train, pdt, undersam)
+  return(kxvalid(5, df, target, train, pdt, opfunc, undersam))
 }
 
 # train(data, target) returns model
 # pdt(model, data) returns probabilities
-kxvalid <- function(k, df, target, train, pdt, undersam)
+kxvalid <- function(k, df, target, train, pdt, opfunc, undersam)
 {
   tauc = 0
   tpre = 0
   tsen = 0
+  pv = list()
   for (i in 1:k)
   {
-    b = ((i - 1) * nrow(df) / k) + 1
-    e = i * nrow(df) / k
-    dftrain = df[-(b:e),]
+    b = as.integer(((i - 1) * nrow(df) / k) + 1)
+    e = as.integer(i * nrow(df) / k)
+    # remove predicted LOS for training
+    #dftrain = df[-(b:e), -which(names(df) == 'pnextLOS_b')] 
+    dftrain = df[-(b:e),] 
+    dftest = df[b:e,]
+    # replace nextLOS_b for testing
+    #dftest[,'nextLOS_b'] = dftest[,'pnextLOS_b'] 
+    #dftest = dftest[,-which(names(df) == 'pnextLOS_b')]
     if (undersam) dftrain = undersampling(dftrain, target)
-    prob = pdt(train(dftrain, target), df[b:e,]) 
-    ans = df[b:e,target]
+    prob = pdt(train(dftrain, target), dftest) 
+    ans = dftest[,target]
     thisauc = auc(ans, prob)
-    op = optimize(fscore, c(0,1), response=ans, prob=prob, maximum=T)
+    op = optimize(get(opfunc), c(0,1), response=ans, prob=prob, maximum=T)
     res = classify(op$maximum, prob)
+    pv = append(pv, prob)
     conf = table(res, ans)
     thissen = sensitivity(conf)
     thispre = precision(conf)
     tauc = tauc + thisauc
     tpre = tpre + thispre
     tsen = tsen + thissen
-    message(k, '-fold ', i, ' round auc ', thisauc, ' pre ', thispre, ' sen ', thissen, ' f-score ', op$objective)
+    message(k, '-fold ', i, ' round auc ', thisauc, ' pre ', thispre, ' sen ', thissen, ' ', opfunc, ' ', op$objective)
   }
   message('auc ', tauc / k, ' pre ', tpre / k, ' sen ', tsen / k)
   message('majority ', max(table(df[,target]))/nrow(df))
+  return(cbind(df, result=unlist(pv)))
 }
 
 undersampling <- function(data, target)
@@ -165,6 +174,13 @@ classify <- function(thres, prob)
   truth[trues] = '1'
   truth[-trues] = '0'
   return(truth)
+}
+
+pre <- function(thres, response, prob)
+{
+  res = classify(thres, prob)
+  conf = table(res, response)
+  return(precision(conf))
 }
 
 # assume binary classes '0' and '1'
