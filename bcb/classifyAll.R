@@ -28,7 +28,7 @@ fcum = c('coms', 'cons', 'er6m', 'adms')
 fres = c('thirtyday', 'nextCost_b', 'nextLOS_b')
 
 # turn variables into factor
-facCol = c('thirtyday', 'nextLOS_b','nextCost_b','pnextLOS_b','type_care','gender','srcsite','srcroute','schedule','oshpd_destination','race_grp','msdrg_severity_ill','sameday', 'merged', fcom)
+facCol = c('thirtyday', 'nextLOS_b','nextCost_b','type_care','gender','srcsite','srcroute','schedule','oshpd_destination','race_grp','msdrg_severity_ill','sameday', 'merged', fcom)
 for (col in facCol) df[,col] = as.factor(df[,col])
 
 # undersampling
@@ -45,16 +45,18 @@ undersam = (!is.na(undersam) & undersam == 'T')
 #}
 
 fsets = list(fdemo, fclos, fadmin, fcom, fcum)
-for (i in c(eval(parse(text=fset))))
-{
-  feats = c(target)
+allfeats = c(fdemo, fclos, fadmin, fcom, fcum, 'pnextLOS_b')
+#for (i in eval(parse(text=paste('c(',fset,')',sep=''))))
+#{
+  #feats = c(target)
   #feats = c(target, 'pnextLOS_b')
   #feats = c(target, 'nextLOS_b', 'pnextLOS_b')
-  for (j in 1:i) feats=c(feats, fsets[[j]])
-  message('feature set 1:', i)
+  #for (j in 1:i) feats=c(feats, fsets[[j]])
+  feats = c(target, allfeats[eval(parse(text=paste('c(',fset,')',sep='')))])
+  #message('feature set 1:', i)
   if (grepl('dt', method)) mlmethod = decisiontree
   if (grepl('lr', method)) mlmethod = logistic
   if (grepl('ada', method)) mlmethod = adaboost
   result = mlmethod(df[,feats], target, opfunc, undersam)
   if (!is.na(outpath)) write.csv(result$result, outpath, quote=F, row.names=F)
-}
+#}
