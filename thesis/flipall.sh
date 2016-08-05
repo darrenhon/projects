@@ -1,5 +1,5 @@
 #!/bin/bash
-for col in $(cat $1)
+for col in $(head -1 $1 | sed 's/,/ /g')
 do
-  python3 flip.py $2 $col data/$col.csv
+  python3 flip.py $1 $col $2/$col.csv
 done
