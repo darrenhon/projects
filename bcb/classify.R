@@ -52,7 +52,7 @@ logistic <- function(df, target, opfunc, undersam)
   return(kxvalid(5, df, target, train, pdt, opfunc, undersam))
 }
 
-adaboost <- function(df, target, opfunc, undersam, initialcp = 0.01)
+adaboost <- function(df, target, opfunc, undersam, cp = NA)
 {
   # adaboost is too slow. random sample 1/5
   #df = df[sort(sample(1:nrow(df), nrow(df) / 5)),]
@@ -61,13 +61,16 @@ adaboost <- function(df, target, opfunc, undersam, initialcp = 0.01)
 
   formula = as.formula(paste(target,'~.',sep=''))
 
-  # find a cp that gives non-trivial leaves
-  cp = initialcp
-  while (cp >= 0.0001)
+  # find a cp that gives at least 20 nodes
+  if (is.na(cp))
   {
-    message('cp ', cp)
-    tree = rpart(formula, df, method='class', control=rpart.control(cp = cp, maxdepth=10))
-    if (nrow(tree$frame) == 1) cp = cp / 2 else break
+    cp = 0.01
+    while (cp >= 0.00001)
+    {
+      message('cp ', cp)
+      tree = rpart(formula, df, method='class', control=rpart.control(cp = cp))
+      if (nrow(tree$frame) < 20) cp = cp / 2 else break
+    }
   }
   message('final cp ', cp)
 
@@ -76,19 +79,22 @@ adaboost <- function(df, target, opfunc, undersam, initialcp = 0.01)
   return(kxvalid(5, df, target, train, pdt, opfunc, undersam))
 }
 
-decisiontree <- function(df, target, opfunc, undersam, initialcp = 0.01)
+decisiontree <- function(df, target, opfunc, undersam, cp = NA)
 {
   message('decisiontree ', target)
 
   formula = as.formula(paste(target,'~.',sep=''))
 
-  # find a cp that gives non-trivial leaves
-  cp = initialcp
-  while (cp >= 0.0001)
+  # find a cp that gives at least 50 nodes
+  if (is.na(cp))
   {
-    message('cp ', cp)
-    tree = rpart(formula, df, method='class', control=rpart.control(cp = cp, maxdepth=10))
-    if (nrow(tree$frame) == 1) cp = cp / 2 else break
+    cp = 0.01
+    while (cp >= 0.00001)
+    {
+      message('cp ', cp)
+      tree = rpart(formula, df, method='class', control=rpart.control(cp = cp))
+      if (nrow(tree$frame) < 50) cp = cp / 2 else break
+    }
   }
   message('final cp ', cp)
 
