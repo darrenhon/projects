@@ -4,6 +4,7 @@ import sys
 # argv[1] - input file
 # argv[2] - name of the column to be flipped
 # argv[3] - output file
+# argv[4] - max seq length (default 20)
 
 fin = open(sys.argv[1], 'r')
 
@@ -28,32 +29,25 @@ def func(line):
 
 ocsv.runFunc(fin, func)
 fin.close()
-maxseq = min(50, maxseq)
+maxlen = int(sys.argv[4]) if len(sys.argv) == 5 else 20
+maxlen = min(maxlen, maxseq)
 
 freq = dict()
-fout = open(sys.argv[3], 'w')
-fout.write(','.join(['X%d' % i for i in range(1, maxseq + 1)]) + ',Y\n')
+fouts = []
+outname = sys.argv[3]
+for i in range(1, maxlen + 1):
+  fout = open('%s-%d.%s' % (outname[:-4], i, outname[-3:]), 'w')
+  fout.write(','.join(['X%d' % j for j in range(1, i + 1)]) + ',Y\n')
+  fouts.append(fout)
 for seq in seqs:
-  # skip sequence longer than 50
-  if len(seq[0]) > 50: continue
+  # skip sequence longer than maxlen
+  if len(seq[0]) > maxlen: continue
   for i in range(len(seq[0])):
     for j in range(len(seq[0]) - i):
       tmpseq = seq[0][j:j + i + 1]
-      tmpseq += [''] * (maxseq - len(tmpseq))
+      #tmpseq += [''] * (maxlen - len(tmpseq))
       key = ','.join(tmpseq) + ',' + seq[1][j + i] 
-      dum = fout.write(key + '\n') 
-      #if key in freq:
-      #  freq[key] = freq[key] + 1
-      #else:
-      #  freq[key] = 1
+      dum = fouts[len(tmpseq)-1].write(key + '\n') 
 
-fout.close()
+[fout.close() for fout in fouts]
 
-#posseqs = []
-#for item in freq.items():
-#  if item[0][-1] == '1':
-#    key = item[0][0:-1] + '0'
-#    if key not in freq: continue
-#    count0 = freq[key]
-#    prob = item[1] / (item[1] + count0)
-#    if prob > 0.5: posseqs.append(item[0])
