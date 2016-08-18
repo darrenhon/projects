@@ -18,7 +18,7 @@ message('Done loading models')
 df = fread(path, data.table=F)
 
 # take a subset of data
-if (length(commandArgs(trailingOnly = TRUE)) >= 5) df = df[eval(parse(text=paste('c(',datarange,')',sep=''))), ]
+if (!is.na(datarange)) df = df[eval(parse(text=paste('c(',datarange,')',sep=''))), ]
 
 # remove unused variables
 df = df[,!names(df) %in% c('admitDT', 'dischargeDT', 'nextCost', 'nextLOS','LOS_b','cost_b', 'nextCost_b', 'nextLOS_b')]
@@ -31,15 +31,15 @@ fcom = names(df)[grepl('ch_com', names(df))]
 fcum = c('coms', 'cons', 'er6m', 'adms', 'lace')
 
 allfeats = c(fdemo, fclos, fadmin, fcom, fcum)
-if (length(commandArgs(trailingOnly = TRUE)) >= 4) allfeats = allfeats[eval(parse(text=paste('c(',fset,')',sep='')))]
+if (!is.na(fset)) allfeats = allfeats[eval(parse(text=paste('c(',fset,')',sep='')))]
 
 # turn variables into factor
 facCol = c('thirtyday', 'type_care','gender','srcsite','srcroute','schedule','oshpd_destination','race_grp','msdrg_severity_ill','sameday', 'merged', fcom)
 for (col in facCol) df[,col] = as.factor(df[,col])
 
 pids = unique(df$PID)
-seqprobs = c()
-lrprobs = c()
+probs = as.list(rep(NA, length(allfeats) + 1))
+names(probs) = c(allfeats, 'lr')
 ans = c()
 count = 1
 for (pid in pids)
@@ -59,22 +59,33 @@ for (pid in pids)
       vals = as.list(rows[start:i, col])
       names(vals) = sapply(1:length(vals), function(x) paste('X', x, sep=''))
       tryCatch({
-        prob = predict(models[[col]][[length(vals)]], vals)[2]
-        thisprobs = c(thisprobs, prob)
+        probs[[col]] = c(probs[[col]], predict(models[[col]][[length(vals)]], vals)[2])
       }, error = function(err)
       {
-        message('Error in column ', col, ', pid ', pid, '. Probability skipped\n', err)
+        probs[[col]] <<- c(probs[[col]], 0.3434)
+        message('Error in column ', col, ', pid ', pid, '. Use majority prob.\n', err)
       })
     }
-    lrprobs = c(lrprobs, predict(lr, rows[i,], type='response'))
-
-    if (length(thisprobs) == 0) thisprobs = c(0.3434)
-    seqprobs = c(seqprobs, mean(thisprobs))
-
+    probs[['lr']] = c(probs[['lr']], predict(lr, rows[i,], type='response'))
     ans = c(ans, rows[i, 'thirtyday'])
   }
 }
+probs = lapply(probs, function(item) item[!is.na(item)])
 
-message('auc seqprobs', auc(ans, seqprobs))
-message('auc lrprobs', auc(ans, lrprobs))
-message('auc mean(lr, seq)', auc(ans, (lrprobs + seqprobs)/2)
+weightedAvgAucNeg = function(w, allprobs, ans)
+{
+  #normalize w
+  w = w / sum(w)
+  for (i in 1:length(allprobs)) allprobs[[i]] = allprobs[[i]] * w[i]
+  waprobs = Reduce('+', allprobs)
+  return(-as.numeric(auc(ans, waprobs)))
+}
+
+avg = Reduce('+', probs) / length(probs)
+message('auc mean all features probs ', auc(ans, avg))
+message('auc lr only ', auc(ans, probs[['lr']]))
+
+message('optimizing auc')
+res = optim(rep(1/(length(allfeats) + 1), length(allfeats) + 1), weightedAvgAucNeg, lower=0, upper=1, method='L-BFGS-B', allprobs=probs, ans=ans)
+message('auc optimized ', -res$value)
+message('weights ', paste(res$par/sum(res$par), collapse=' ,'))
