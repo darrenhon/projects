@@ -48,9 +48,9 @@ for (pid in pids)
   count = count + 1
   rows = df[df$PID == pid,]
   # skip patients less than 4 records
-  #if (nrow(rows) < 4) next
-  #for (i in 4:nrow(rows))
-  for (i in 1:nrow(rows))
+  if (nrow(rows) < 4) next
+  for (i in 4:nrow(rows))
+  #for (i in 1:nrow(rows))
   {
     thisprobs = c()
     for (col in allfeats)
@@ -86,6 +86,6 @@ message('auc mean all features probs ', auc(ans, avg))
 message('auc lr only ', auc(ans, probs[['lr']]))
 
 message('optimizing auc')
-res = optim(rep(1/(length(allfeats) + 1), length(allfeats) + 1), weightedAvgAucNeg, lower=0, upper=1, method='L-BFGS-B', allprobs=probs, ans=ans)
+res = optim(c(rep(0, length(allfeats)), 1), weightedAvgAucNeg, lower=0, upper=1, method='L-BFGS-B', allprobs=probs, ans=ans)
 message('auc optimized ', -res$value)
 message('weights ', paste(res$par/sum(res$par), collapse=' ,'))

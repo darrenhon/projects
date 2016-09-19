@@ -9,7 +9,7 @@ import sys
 fin = open(sys.argv[1], 'r')
 
 col = ocsv.getColumns(fin.readline())
-flipCol = col[sys.argv[2]]
+flipCol = col[sys.argv[2].strip()]
 
 currentpid = ''
 maxseq = 1
