@@ -47,10 +47,13 @@ for (pid in pids)
   if ((count %% floor(length(pids) / 100)) == 0) message('Running ', count * 100 / length(pids), '%')
   count = count + 1
   rows = df[df$PID == pid,]
-  # skip patients less than 4 records
-  if (nrow(rows) < 4) next
-  for (i in 4:nrow(rows))
+  # do it for all rows
   #for (i in 1:nrow(rows))
+  # skip patients less than 4 records
+  #if (nrow(rows) < 4) next
+  #for (i in 4:nrow(rows))
+  # do it only for the last row
+  for (i in c(nrow(rows)))
   {
     thisprobs = c()
     for (col in allfeats)
@@ -85,7 +88,13 @@ avg = Reduce('+', probs) / length(probs)
 message('auc mean all features probs ', auc(ans, avg))
 message('auc lr only ', auc(ans, probs[['lr']]))
 
-message('optimizing auc')
+message('optimizing auc with lr')
 res = optim(c(rep(0, length(allfeats)), 1), weightedAvgAucNeg, lower=0, upper=1, method='L-BFGS-B', allprobs=probs, ans=ans)
+message('auc optimized ', -res$value)
+message('weights ', paste(res$par/sum(res$par), collapse=' ,'))
+
+probs = probs[names(probs) != 'lr']
+message('optimizing auc without lr')
+res = optim(rep(1, length(allfeats)), weightedAvgAucNeg, lower=0, upper=1, method='L-BFGS-B', allprobs=probs, ans=ans)
 message('auc optimized ', -res$value)
 message('weights ', paste(res$par/sum(res$par), collapse=' ,'))

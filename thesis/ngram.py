@@ -56,9 +56,10 @@ def test(syms, rows):
   probs = []
   ans = []
   pdt = []
-  for row in testrows:
-    for i in range(len(row) - 1):
-      testrow = row[i:]
+  for testrow in testrows:
+  #for row in testrows:
+  #  for i in range(len(row) - 1):
+  #    testrow = row[i:]
       results = predict(testrow[:-1], ngrams, syms)
       probs.append(results[0 if results[0][0] == 1 else 1][1])
       pdt.append(results[0][0])
