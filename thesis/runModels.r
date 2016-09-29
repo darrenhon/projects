@@ -21,13 +21,16 @@ message('datarange ', datarange)
 message('filterseqlen ', filterseqlen)
 message('takelastnsym ', takelastnsym)
 message('weights ', weights)
+
+message('Loading data...')
+df = fread(path, data.table=F)
+message('Done loading data')
+
 message('Loading models...')
 lr = readRDS(lrmodel)
 models = readRDS(pathmodels)
 maxlen = length(models[[1]])
 message('Done loading models')
-
-df = fread(path, data.table=F)
 
 # take a subset of data
 if (valid(datarange)) df = df[eval(parse(text=paste('c(',datarange,')',sep=''))), ]
