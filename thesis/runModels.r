@@ -81,7 +81,6 @@ for (pid in pids)
       vals = rows[start:i, col]
       if (valid(takelastnsym))
         vals = vals[1:min(as.numeric(takelastnsym), length(vals))]
-      vals = as.list(rows[start:i, col])
       names(vals) = sapply(1:length(vals), function(x) paste('X', x, sep=''))
       tryCatch({
         probs[[col]] = c(probs[[col]], predict(models[[col]][[length(vals)]], vals)[2])
@@ -107,7 +106,7 @@ weightedAvgAucNeg = function(w, allprobs, ans)
 }
 
 avg = Reduce('+', probs) / length(probs)
-message('auc mean all features probs ', auc(ans, avg))
+message('auc mean all features with lr ', auc(ans, avg))
 message('auc lr only ', auc(ans, probs[['lr']]))
 
 if (valid(weights))
