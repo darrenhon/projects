@@ -1,5 +1,5 @@
 #!/bin/sh
 for i in `seq 1 35`
 do
-  Rscript runModels.r OSHPD_CHF_BCB_KNOWNCOST_BUCKET_NOLAST_PRIVATE.csv models.rds $i
+  Rscript runModels.r $1 $2 $3 $4 $i
 done
