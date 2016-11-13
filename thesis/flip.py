@@ -3,8 +3,9 @@ import sys
 
 # argv[1] - input file
 # argv[2] - name of the column to be flipped
-# argv[3] - output file
-# argv[4] - max seq length (default 20)
+# argv[3] - response column
+# argv[4] - output file
+# argv[5] - max seq length (default 20)
 inpath = sys.argv[1]
 flipcol = sys.argv[2]
 targetcol = sys.argv[3]
@@ -29,8 +30,12 @@ def func(line):
     seqs[-1][1].append(row[col[targetcol]])
     maxseq = max(maxseq, len(seqs[-1][0]))
   else:
-    seqs.append([[row[flipCol]], [row[col[targetcol]]]])
+    seqs.append(([row[flipCol]], [row[col[targetcol]]]))
   currentpid = pid
+
+if targetcol == flipcol:
+    seqs = [(pair[0][:-1], pair[1][1:]) for pair in seqs if len(seqs[0]) > 1]]
+    maxseq -= 1
 
 ocsv.runFunc(fin, func)
 fin.close()
