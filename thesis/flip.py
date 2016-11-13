@@ -34,7 +34,7 @@ def func(line):
   currentpid = pid
 
 if targetcol == flipcol:
-    seqs = [(pair[0][:-1], pair[1][1:]) for pair in seqs if len(seqs[0]) > 1]]
+    seqs = [(pair[0][:-1], pair[1][1:]) for pair in seqs if len(seqs[0]) > 1]
     maxseq -= 1
 
 ocsv.runFunc(fin, func)

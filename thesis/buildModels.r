@@ -20,7 +20,7 @@ fadmin = c('schedule', 'srcsite', 'srcroute', 'msdrg_severity_ill', 'type_care',
 fcom = names(df)[grepl('ch_com', names(df))]
 fcum = c('coms', 'cons', 'er6m', 'adms', 'lace')
 
-allfeats = c(fdemo, fclos, fadmin, fcom, fcum)
+allfeats = c(fdemo, fclos, fadmin, fcom, fcum, target)
 
 # turn variables into factor
 facCol = c(target, 'type_care','gender','srcsite','srcroute','schedule','oshpd_destination','race_grp','msdrg_severity_ill','sameday', 'merged', fcom)
