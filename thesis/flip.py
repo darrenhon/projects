@@ -3,13 +3,19 @@ import sys
 
 # argv[1] - input file
 # argv[2] - name of the column to be flipped
-# argv[3] - output file
-# argv[4] - max seq length (default 20)
+# argv[3] - response column
+# argv[4] - output file
+# argv[5] - max seq length (default 20)
+inpath = sys.argv[1]
+flipcol = sys.argv[2]
+targetcol = sys.argv[3]
+outpath = sys.argv[4]
+usermax = sys.argv[5] if len(sys.argv) > 5 else None
 
-fin = open(sys.argv[1], 'r')
+fin = open(inpath, 'r')
 
 col = ocsv.getColumns(fin.readline())
-flipCol = col[sys.argv[2]]
+flipCol = col[flipcol.strip()]
 
 currentpid = ''
 maxseq = 1
@@ -21,22 +27,25 @@ def func(line):
   pid = row[col['PID']]
   if pid == currentpid:
     seqs[-1][0].append(row[flipCol])
-    seqs[-1][1].append(row[col['thirtyday']])
+    seqs[-1][1].append(row[col[targetcol]])
     maxseq = max(maxseq, len(seqs[-1][0]))
   else:
-    seqs.append([[row[flipCol]], [row[col['thirtyday']]]])
+    seqs.append(([row[flipCol]], [row[col[targetcol]]]))
   currentpid = pid
+
+if targetcol == flipcol:
+    seqs = [(pair[0][:-1], pair[1][1:]) for pair in seqs if len(seqs[0]) > 1]
+    maxseq -= 1
 
 ocsv.runFunc(fin, func)
 fin.close()
-maxlen = int(sys.argv[4]) if len(sys.argv) == 5 else 20
+maxlen = int(usermax) if usermax is not None else 20
 maxlen = min(maxlen, maxseq)
 
 freq = dict()
 fouts = []
-outname = sys.argv[3]
 for i in range(1, maxlen + 1):
-  fout = open('%s-%d.%s' % (outname[:-4], i, outname[-3:]), 'w')
+  fout = open('%s-%d.%s' % (outpath[:-4], i, outpath[-3:]), 'w')
   fout.write(','.join(['X%d' % j for j in range(1, i + 1)]) + ',Y\n')
   fouts.append(fout)
 for seq in seqs:
