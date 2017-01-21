@@ -1,7 +1,7 @@
 target = commandArgs(trailingOnly = TRUE)[1]
 path = commandArgs(trailingOnly = TRUE)[2]
 pathmodels = commandArgs(trailingOnly = TRUE)[3]
-lrmodel = commandArgs(trailingOnly = TRUE)[4]
+ebmodel = commandArgs(trailingOnly = TRUE)[4]
 fset = commandArgs(trailingOnly = TRUE)[5]
 datarange = commandArgs(trailingOnly = TRUE)[6]
 filterseqlen = commandArgs(trailingOnly = TRUE)[7]
@@ -17,6 +17,10 @@ library(data.table)
 library(rpart)
 library(pROC)
 
+message('target ', target)
+message('path ', path)
+message('pathmodels ', pathmodels)
+message('ebmodel ', ebmodel)
 message('fset ', fset)
 message('datarange ', datarange)
 message('filterseqlen ', filterseqlen)
@@ -28,7 +32,7 @@ df = fread(path, data.table=F)
 message('Done loading data')
 
 message('Loading models...')
-lr = readRDS(lrmodel)
+eb = if (valid(ebmodel)) readRDS(ebmodel) else NA
 models = readRDS(pathmodels)
 maxlen = length(models[[1]])
 message('Done loading models')
@@ -57,7 +61,7 @@ for (col in facCol) df[,col] = as.factor(df[,col])
 
 pids = unique(df$PID)
 probs = as.list(rep(NA, length(allfeats) + 1))
-names(probs) = c(allfeats, 'lr')
+names(probs) = c(allfeats, 'eb')
 ans = c()
 count = 1
 maj = table(df[,target])['1'] / nrow(df)
@@ -94,7 +98,15 @@ for (pid in pids)
         message('Error in column ', col, ', pid ', pid, '. Use majority prob.\n', err)
       })
     }
-    probs[['lr']] = c(probs[['lr']], predict(lr, rows[i,], type='response'))
+    if (!is.na(eb))
+    {
+      if (class(eb)[1] == 'glm') 
+        probs[['eb']] = c(probs[['eb']], predict(eb, rows[i,], type='response'))
+      else if (class(eb)[1] == 'rpart')
+        probs[['eb']] = c(probs[['eb']], predict(eb, rows[i,])[2])
+      else
+        message('Unknown eb model, ', class(eb)[1])
+    }
     ans = c(ans, rows[i, target])
   }
 }
@@ -109,31 +121,37 @@ weightedAvgAucNeg = function(w, allprobs, ans)
   return(-as.numeric(auc(ans, waprobs)))
 }
 
-avg = Reduce('+', probs) / length(probs)
-message('auc mean all features with lr ', auc(ans, avg))
-message('auc lr only ', auc(ans, probs[['lr']]))
+if (!is.na(eb))
+{
+  avg = Reduce('+', probs) / length(probs)
+  message('auc mean all features with eb ', auc(ans, avg))
+  message('auc eb only ', auc(ans, probs[['eb']]))
+}
 
 if (valid(weights))
 {
   weights = eval(parse(text=paste('c(', weights,')',sep='')))
   if (length(weights) == length(allfeats))
   {
-    probs = probs[names(probs) != 'lr']
-    message('auc without lr from provided weights ', -weightedAvgAucNeg(weights, probs, ans))
+    probs = probs[names(probs) != 'eb']
+    message('auc without eb from provided weights ', -weightedAvgAucNeg(weights, probs, ans))
   }
-  else if (length(weights) == length(allfeats) + 1)
+  else if (length(weights) == length(allfeats) + 1 && !is.na(eb))
   {
-    message('auc with lr from provided weights ', -weightedAvgAucNeg(weights, probs, ans))
+    message('auc with eb from provided weights ', -weightedAvgAucNeg(weights, probs, ans))
   }
 } else
 {
-  message('optimizing auc with lr')
-  res = optim(c(rep(0, length(allfeats)), 1), weightedAvgAucNeg, lower=0, upper=1, method='L-BFGS-B', allprobs=probs, ans=ans)
-  message('auc optimized ', -res$value)
-  message('weights ', paste(res$par/sum(res$par), collapse=' ,'))
+  if (!is.na(eb))
+  {
+    message('optimizing auc with eb')
+    res = optim(c(rep(0, length(allfeats)), 1), weightedAvgAucNeg, lower=0, upper=1, method='L-BFGS-B', allprobs=probs, ans=ans)
+    message('auc optimized ', -res$value)
+    message('weights ', paste(res$par/sum(res$par), collapse=' ,'))
+  }
 
-  probs = probs[names(probs) != 'lr']
-  message('optimizing auc without lr')
+  probs = probs[names(probs) != 'eb']
+  message('optimizing auc without eb')
   res = optim(rep(1, length(allfeats)), weightedAvgAucNeg, lower=0, upper=1, method='L-BFGS-B', allprobs=probs, ans=ans)
   message('auc optimized ', -res$value)
   message('weights ', paste(res$par/sum(res$par), collapse=' ,'))
