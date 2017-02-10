@@ -1,6 +1,12 @@
 target = commandArgs(trailingOnly = TRUE)[1]
 path = commandArgs(trailingOnly = TRUE)[2]
 pathmodel = commandArgs(trailingOnly = TRUE)[3]
+fset = commandArgs(trailingOnly = TRUE)[4]
+
+valid = function(arg)
+{
+    return(!is.na(arg) & arg != 'NA')
+}
 
 library(data.table)
 library(rpart)
@@ -21,10 +27,13 @@ fcom = names(df)[grepl('ch_com', names(df))]
 fcum = c('coms', 'cons', 'er6m', 'adms', 'lace')
 
 allfeats = c(fdemo, fclos, fadmin, fcom, fcum)
+if (valid(fset)) allfeats = allfeats[eval(parse(text=paste('c(',fset,')',sep='')))]
 
 # turn variables into factor
 facCol = c(target, 'type_care','gender','srcsite','srcroute','schedule','oshpd_destination','race_grp','msdrg_severity_ill','sameday', 'merged', fcom)
 for (col in facCol) df[,col] = as.factor(df[,col])
+
+df = df[,c(allfeats, target)]
 
 fml = as.formula(paste(target,'~.',sep=''))
 dt = rpart(fml, df, control = rpart.control(cp=0.00001))
