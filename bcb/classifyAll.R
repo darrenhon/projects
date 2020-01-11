@@ -10,9 +10,6 @@ source('classify.R')
 library(data.table)
 df = fread(path, data.table=F)
 
-# remove unused variables
-df = df[,!names(df) %in% c('admitDT', 'dischargeDT', 'PID', 'nextCost', 'nextLOS','LOS_b','cost_b')]
-
 # turn nextCost_b, nextLOS_b into binary
 df[df$nextCost_b <= 3, 'nextCost_b'] = 0
 df[df$nextCost_b > 3, 'nextCost_b'] = 1
@@ -27,8 +24,11 @@ fcom = names(df)[grepl('ch_com', names(df))]
 fcum = c('coms', 'cons', 'er6m', 'adms')
 fres = c('thirtyday', 'nextCost_b', 'nextLOS_b')
 
+# remove unused variables
+df = df[,!names(df) %in% c('admitDT', 'dischargeDT', 'nextCost', 'nextLOS','LOS_b','cost_b', c(fres[fres != target]))]
+
 # turn variables into factor
-facCol = c('thirtyday', 'nextLOS_b','nextCost_b','type_care','gender','srcsite','srcroute','schedule','oshpd_destination','race_grp','msdrg_severity_ill','sameday', 'merged', fcom)
+facCol = c(target,'type_care','gender','srcsite','srcroute','schedule','oshpd_destination','race_grp','msdrg_severity_ill','sameday', 'merged', fcom)
 for (col in facCol) df[,col] = as.factor(df[,col])
 
 # undersampling
@@ -45,7 +45,7 @@ undersam = (!is.na(undersam) & undersam == 'T')
 #}
 
 fsets = list(fdemo, fclos, fadmin, fcom, fcum)
-allfeats = c(fdemo, fclos, fadmin, fcom, fcum, 'pnextLOS_b')
+allfeats = c(fdemo, fclos, fadmin, fcom, fcum)
 #for (i in eval(parse(text=paste('c(',fset,')',sep=''))))
 #{
   #feats = c(target)
@@ -58,5 +58,5 @@ allfeats = c(fdemo, fclos, fadmin, fcom, fcum, 'pnextLOS_b')
   if (grepl('lr', method)) mlmethod = logistic
   if (grepl('ada', method)) mlmethod = adaboost
   result = mlmethod(df[,feats], target, opfunc, undersam)
-  if (!is.na(outpath)) write.csv(result$result, outpath, quote=F, row.names=F)
+  if (!is.na(outpath)) write.csv(cbind(PID=df$PID, predict=result$result), outpath, quote=F, row.names=F)
 #}
