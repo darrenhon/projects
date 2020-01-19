@@ -72,17 +72,20 @@ def Kruskal(vs, es):
     resultEs.add(newEdge)
   return resultEs
 
-verteces = [Vertex(str(i)) for i in range(1, 8)]
+# the graph from this video: https://www.youtube.com/watch?v=4ZlRH0eK-qQ
+# vertices[0] is a dummy placeholder for more readable indices
+vertices = [Vertex(str(i)) for i in range(8)]
 edges = { 
-    verteces[0].connect(verteces[1], 28),
-    verteces[0].connect(verteces[5], 10),
-    verteces[1].connect(verteces[6], 14),
-    verteces[1].connect(verteces[2], 16),
-    verteces[2].connect(verteces[3], 12),
-    verteces[3].connect(verteces[6], 18),
-    verteces[3].connect(verteces[4], 22),
-    verteces[4].connect(verteces[6], 24),
-    verteces[4].connect(verteces[5], 25)}
+    vertices[1].connect(vertices[2], 28),
+    vertices[1].connect(vertices[6], 10),
+    vertices[2].connect(vertices[7], 14),
+    vertices[2].connect(vertices[3], 16),
+    vertices[3].connect(vertices[4], 12),
+    vertices[4].connect(vertices[7], 18),
+    vertices[4].connect(vertices[5], 22),
+    vertices[5].connect(vertices[7], 24),
+    vertices[5].connect(vertices[6], 25)}
+del vertices[0]
 
-[print(e.src.name + "-" + e.dest.name + ":" + str(e.cost)) for e in Prim(verteces, edges)]
-[print(e.src.name + "-" + e.dest.name + ":" + str(e.cost)) for e in Kruskal(verteces, edges)]
+[print(e.src.name + "-" + e.dest.name + ":" + str(e.cost)) for e in Prim(vertices, edges)]
+[print(e.src.name + "-" + e.dest.name + ":" + str(e.cost)) for e in Kruskal(vertices, edges)]
