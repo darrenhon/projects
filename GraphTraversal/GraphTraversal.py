@@ -51,5 +51,5 @@ a, b, c, d, e, f, g, h = (Vertex(chr(i)) for i in range(97, 97 + 8))
 [f.connect(i) for i in (b,d,c)]
 c.connect(h)
 
-[i.name for i in BFS(a, h)]
-[i.name for i in DFS(a, h)]
+[print(i.name) for i in BFS(a, h)]
+[print(i.name) for i in DFS(a, h)]
